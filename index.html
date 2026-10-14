@@ -83,24 +83,39 @@ const MODEL_URLS = [
 ];
 const gltfLoader=new GLTFLoader();
 for(const item of MODEL_URLS){
+ stateLabel.textContent='Descargando ciudad 3D…';
  gltfLoader.load(item.url,gltf=>{
-  const model=gltf.scene;
-  model.scale.setScalar(item.scale||1);
-  model.rotation.y=item.rotationY||0;
-  model.updateMatrixWorld(true);
-  // Centra el modelo en X/Z y apoya su base en el suelo, aunque el origen del archivo esté desplazado.
-  const bounds=new THREE.Box3().setFromObject(model);
-  const center=bounds.getCenter(new THREE.Vector3());
-  const target=item.position||[0,0,0];
-  model.position.set(target[0]-center.x, target[1]-bounds.min.y, target[2]-center.z);
-  model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
-  scene.add(model);
-  stateLabel.textContent='Ciudad 3D cargada · explora con WASD';
-  document.querySelector('#message').style.display='none';
+  try{
+   const model=gltf.scene;
+   model.scale.setScalar(item.scale||1);
+   model.rotation.y=item.rotationY||0;
+   // Coloca el modelo directamente; evitamos calcular límites de todas las mallas al cargar.
+   const target=item.position||[0,0,0];
+   model.position.set(target[0],target[1],target[2]);
+   model.traverse(o=>{
+    if(o.isMesh){
+     o.castShadow=false;
+     o.receiveShadow=false;
+     if(o.material){
+      const mats=Array.isArray(o.material)?o.material:[o.material];
+      for(const mat of mats){if(mat.map)mat.map.colorSpace=THREE.SRGBColorSpace;}
+     }
+    }
+   });
+   scene.add(model);
+   stateLabel.textContent='Ciudad 3D cargada · explora con WASD';
+   document.querySelector('#message').style.display='none';
+  }catch(e){
+   console.error('El archivo se descargó, pero no se pudo preparar el modelo:',e);
+   stateLabel.textContent='Error al preparar la ciudad 3D';
+   const message=document.querySelector('#message');
+   message.textContent='Se descargó el modelo, pero el navegador no pudo prepararlo. Prueba recargar la página.';
+   message.style.display='block';
+  }
  },progress=>{
   if(progress.total>0){
    const percent=Math.round(progress.loaded/progress.total*100);
-   stateLabel.textContent='Cargando ciudad 3D… '+percent+'%';
+   stateLabel.textContent='Descargando ciudad 3D… '+percent+'%';
   }else{
    stateLabel.textContent='Descargando ciudad 3D…';
   }
@@ -108,7 +123,7 @@ for(const item of MODEL_URLS){
   console.error('No se pudo cargar el modelo:',item.url,err);
   stateLabel.textContent='No se pudo cargar la ciudad 3D';
   const message=document.querySelector('#message');
-  message.textContent='No se pudo descargar LowPolyCity.glb. Recarga la página; si sigue igual, comprueba que el archivo esté en la carpeta models del repositorio.';
+  message.textContent='No se pudo descargar LowPolyCity.glb. Comprueba tu conexión y recarga la página. Si continúa, el archivo no está llegando desde GitHub Pages.';
   message.style.display='block';
  });
 }
