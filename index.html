@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mouse FPV 360°</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #080d13; color: #f4f7fb; }
+    #scene { position: fixed; inset: 0; }
+    canvas { display:block; width:100%; height:100%; cursor: crosshair; }
+    .hud { position:fixed; z-index:2; pointer-events:none; }
+    .top { top:20px; left:20px; right:20px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .panel { background:rgba(7,13,21,.72); border:1px solid rgba(255,255,255,.16); border-radius:14px; padding:12px 15px; backdrop-filter:blur(12px); box-shadow:0 10px 35px #0003; }
+    .brand { font-size:12px; text-transform:uppercase; letter-spacing:.18em; color:#79e3d2; font-weight:800; }
+    h1 { margin:5px 0 0; font-size:clamp(18px,2.5vw,27px); letter-spacing:-.04em; }
+    .status { font-size:12px; color:#c4d0dc; margin-top:5px; }
+    .right { text-align:right; font:12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color:#d4e1ec; }
+    .bottom { bottom:20px; left:50%; transform:translateX(-50%); text-align:center; width:min(92vw,620px); }
+    .hint { color:#e2eaf2; font-size:13px; line-height:1.5; }
+    .dot { display:inline-block; width:7px; height:7px; background:#63e6be; border-radius:50%; margin-right:7px; box-shadow:0 0 12px #63e6be; }
+    .crosshair { position:fixed; left:50%; top:50%; width:20px; height:20px; transform:translate(-50%,-50%); z-index:1; pointer-events:none; opacity:.8; }
+    .crosshair:before,.crosshair:after { content:""; position:absolute; background:#fff; box-shadow:0 0 5px #000; }
+    .crosshair:before { width:1px; height:20px; left:9px; top:0; }
+    .crosshair:after { height:1px; width:20px; top:9px; left:0; }
+    .controls { pointer-events:auto; display:flex; justify-content:center; gap:8px; margin-top:10px; flex-wrap:wrap; }
+    button { border:1px solid #ffffff35; background:#101c28dd; color:#f4f7fb; border-radius:999px; padding:9px 13px; cursor:pointer; font-weight:650; }
+    button:hover { background:#213447; }
+    button:focus-visible { outline:2px solid #79e3d2; outline-offset:3px; }
+    #error { display:none; position:fixed; z-index:5; inset:auto 20px 20px 20px; background:#421f25; padding:14px; border-radius:10px; }
+    @media(max-width:600px) { .top {top:10px;left:10px;right:10px}.panel{padding:10px}.right{display:none}.bottom{bottom:10px} }
+  </style>
+</head>
+<body>
+  <div id="scene"></div>
+  <div class="crosshair"></div>
+  <div class="hud top">
+    <div class="panel">
+      <div class="brand">Simulador de mirada · 360°</div>
+      <h1>Mouse FPV</h1>
+      <div class="status"><span class="dot"></span><span id="state">Vista activa · mueve el mouse</span></div>
+    </div>
+    <div class="panel right">
+      <div>YAW <span id="yaw">0.0°</span></div>
+      <div>PITCH <span id="pitch">0.0°</span></div>
+      <div>FOV <span id="fov">75°</span></div>
+    </div>
+  </div>
+  <div class="hud bottom">
+    <div class="panel">
+      <div class="hint">Mueve el mouse para mirar alrededor · arrastra para girar · rueda para acercar/alejar</div>
+      <div class="controls">
+        <button id="reset">Centrar vista</button>
+        <button id="toggle">Activar modo arrastre</button>
+        <button id="fullscreen">Pantalla completa</button>
+      </div>
+    </div>
+  </div>
+  <div id="error"></div>
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+    const mount = document.querySelector('#scene');
+    const stateLabel = document.querySelector('#state');
+    const yawLabel = document.querySelector('#yaw');
+    const pitchLabel = document.querySelector('#pitch');
+    const fovLabel = document.querySelector('#fov');
+    const errorBox = document.querySelector('#error');
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1100);
+    camera.position.set(0, 0, 0.01);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    mount.appendChild(renderer.domElement);
+
+    // Panorama equirectangular de demostración. Se puede reemplazar por una imagen 360 propia.
+    const panoramaUrl = 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg';
+    const loader = new THREE.TextureLoader();
+    loader.load(panoramaUrl, (texture) => {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const sphere = new THREE.Mesh(
+        new THREE.SphereGeometry(500, 80, 60),
+        new THREE.MeshBasicMaterial({ map: texture, side: THREE.BackSide })
+      );
+      scene.add(sphere);
+      stateLabel.textContent = 'Panorama cargado · mueve el mouse';
+    }, undefined, () => {
+      // Fallback procedural: un entorno colorido si el panorama remoto no está disponible.
+      const canvas = document.createElement('canvas');
+      canvas.width = 2048; canvas.height = 1024;
+      const ctx = canvas.getContext('2d');
+      const sky = ctx.createLinearGradient(0,0,0,1024);
+      sky.addColorStop(0,'#173d65'); sky.addColorStop(.53,'#79b7cb'); sky.addColorStop(.54,'#477c67'); sky.addColorStop(1,'#182c28');
+      ctx.fillStyle=sky; ctx.fillRect(0,0,2048,1024);
+      for(let i=0;i<90;i++){
+        const x=Math.random()*2048, y=520+Math.random()*350, r=15+Math.random()*90;
+        ctx.fillStyle=['#1d473d','#315b43','#52784b','#263f38'][i%4];
+        ctx.beginPath(); ctx.ellipse(x,y,r,r*(.5+Math.random()),0,0,Math.PI*2); ctx.fill();
+      }
+      const tex = new THREE.CanvasTexture(canvas); tex.colorSpace=THREE.SRGBColorSpace;
+      scene.add(new THREE.Mesh(new THREE.SphereGeometry(500,80,60),new THREE.MeshBasicMaterial({map:tex,side:THREE.BackSide})));
+      stateLabel.textContent = 'Entorno de respaldo · panorama remoto no disponible';
+    });
+
+    let yaw = 0, pitch = 0, targetYaw = 0, targetPitch = 0;
+    let fov = 75, dragging = false, dragMode = false;
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    function setFromPointer(e) {
+      if (dragMode && !dragging) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const ny = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+      targetYaw = -nx * Math.PI;
+      targetPitch = clamp(-ny * Math.PI * 0.48, -Math.PI * 0.49, Math.PI * 0.49);
+    }
+    renderer.domElement.addEventListener('pointermove', e => { if (!dragMode || dragging) setFromPointer(e); });
+    renderer.domElement.addEventListener('pointerdown', e => {
+      if (dragMode) { dragging = true; renderer.domElement.setPointerCapture(e.pointerId); setFromPointer(e); }
+    });
+    renderer.domElement.addEventListener('pointerup', () => { dragging = false; });
+    renderer.domElement.addEventListener('pointercancel', () => { dragging = false; });
+    renderer.domElement.addEventListener('wheel', e => {
+      e.preventDefault(); fov = clamp(fov + Math.sign(e.deltaY) * 3, 35, 100); camera.fov = fov; camera.updateProjectionMatrix(); fovLabel.textContent = `${fov}°`;
+    }, { passive: false });
+
+    document.querySelector('#reset').addEventListener('click', () => { targetYaw = 0; targetPitch = 0; fov = 75; camera.fov=fov; camera.updateProjectionMatrix(); fovLabel.textContent='75°'; });
+    document.querySelector('#toggle').addEventListener('click', e => {
+      dragMode = !dragMode;
+      e.currentTarget.textContent = dragMode ? 'Desactivar modo arrastre' : 'Activar modo arrastre';
+      stateLabel.textContent = dragMode ? 'Modo arrastre · mantén pulsado y mueve' : 'Vista activa · mueve el mouse';
+    });
+    document.querySelector('#fullscreen').addEventListener('click', async () => {
+      try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); } catch {}
+    });
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
+    });
+
+    const direction = new THREE.Vector3();
+    function animate() {
+      requestAnimationFrame(animate);
+      yaw += (targetYaw - yaw) * 0.12;
+      pitch += (targetPitch - pitch) * 0.12;
+      direction.set(
+        Math.sin(yaw) * Math.cos(pitch),
+        Math.sin(pitch),
+        -Math.cos(yaw) * Math.cos(pitch)
+      );
+      camera.lookAt(direction);
+      yawLabel.textContent = `${THREE.MathUtils.radToDeg(yaw).toFixed(1)}°`;
+      pitchLabel.textContent = `${THREE.MathUtils.radToDeg(pitch).toFixed(1)}°`;
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
