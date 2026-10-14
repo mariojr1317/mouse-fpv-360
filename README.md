@@ -1,25 +1,36 @@
-# Mouse FPV 360°
+# Mouse FPV — Exploración 3D
 
-Demo web de una vista en primera persona controlada por el mouse usando Three.js y un panorama equirectangular de 360°.
+Juego web en primera persona con Three.js, pensado para Chromebook y controles de puntero facial.
 
-## Ejecutar
-- Abre `index.html` en un navegador moderno con conexión a internet. Si el navegador bloquea módulos al abrir archivos locales, inicia un servidor local:
-  - Python: `python -m http.server 8000`
-  - Luego visita `http://localhost:8000`.
+## Jugar
+Abre la página publicada en GitHub Pages. Para desarrollo local, sirve la carpeta con un servidor HTTP (por ejemplo, `python -m http.server 8000`) y abre `http://localhost:8000`.
 
 ## Controles
-- Mueve el mouse para cambiar la dirección de la mirada.
-- Usa la rueda para cambiar el campo de visión (zoom).
-- Usa **Activar modo arrastre** si prefieres girar manteniendo pulsado.
-- **Centrar vista** devuelve la cámara al frente.
-- **Pantalla completa** amplía la experiencia.
+- **Mirada:** mueve el puntero facial para girar la cámara.
+- **WASD** o flechas: moverte por el mundo.
+- **Botones de flechas en pantalla:** movimiento accesible con cursor, pantalla táctil o ratón.
+- **Shift** o botón «Correr»: caminar más rápido.
+- **Volver al inicio:** restablece la posición y la mirada.
+- **Pantalla completa:** amplía la vista.
 
-## Cambiar la imagen 360°
-En `index.html`, cambia la constante `panoramaUrl` por la URL pública de tu imagen panorámica equirectangular (relación de aspecto aproximada 2:1). La imagen se carga desde internet; el proyecto incluye un entorno de respaldo si no puede descargarse.
+## Añadir modelos 3D propios
+1. Exporta el modelo como **GLB** (recomendado) o glTF.
+2. Sube los archivos a la carpeta `models/`. En GLB, las texturas suelen ir dentro del mismo archivo.
+3. En `index.html`, busca `const MODEL_URLS = [];` y agrega una entrada por modelo. Ejemplo:
 
-## Publicar en GitHub Pages
-1. Crea un repositorio público en GitHub.
-2. Sube `index.html` y `README.md` a la raíz.
-3. Ve a **Settings → Pages**.
-4. En **Build and deployment**, selecciona **Deploy from a branch**, rama `main` y carpeta `/ (root)`.
-5. Guarda y espera a que GitHub muestre la URL publicada.
+```js
+const MODEL_URLS = [
+  { url: './models/casa.glb', position: [0, 0, -12], scale: 1, rotationY: 0 },
+  { url: './models/arbol-especial.glb', position: [8, 0, -5], scale: 1.5, rotationY: 0.7 }
+];
+```
+
+- `position`: ubicación `[x, y, z]`; el suelo está en `y = 0`.
+- `scale`: tamaño del modelo; empieza con `1`.
+- `rotationY`: giro horizontal en radianes.
+- Si tu modelo es glTF con archivos de textura externos, conserva la estructura de carpetas y rutas relativas.
+
+**Importante:** los nombres y rutas deben coincidir exactamente, incluyendo mayúsculas y minúsculas. Para un modelo con texturas, lo más fácil es entregar un `.glb` autocontenido. Mantén los modelos razonablemente ligeros para que el juego funcione bien en Chromebook.
+
+## Publicación
+El proyecto usa módulos de Three.js desde jsDelivr, por lo que necesita conexión a internet. En GitHub, comprueba **Settings → Pages** para verificar que Pages publique desde la rama `main` y la carpeta raíz.
