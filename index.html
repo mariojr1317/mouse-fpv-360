@@ -78,12 +78,24 @@ const post=new THREE.Mesh(new THREE.CylinderGeometry(.13,.16,2.2,8),new THREE.Me
 
 // Añade aquí tus modelos en formato .glb o .gltf. Usa rutas relativas desde index.html.
 // Ejemplo: { url: './models/casa.glb', position: [0,0,-12], scale: 1, rotationY: 0 }
-const MODEL_URLS = [];
+const MODEL_URLS = [
+  { url: './models/LowPolyCity.glb', position: [0, 0, -8], scale: 1, rotationY: 0 }
+];
 const gltfLoader=new GLTFLoader();
 for(const item of MODEL_URLS){
  gltfLoader.load(item.url,gltf=>{
-  const model=gltf.scene;model.position.set(...(item.position||[0,0,0]));model.scale.setScalar(item.scale||1);model.rotation.y=item.rotationY||0;
-  model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});scene.add(model);
+  const model=gltf.scene;
+  model.scale.setScalar(item.scale||1);
+  model.rotation.y=item.rotationY||0;
+  model.updateMatrixWorld(true);
+  // Centra el modelo en X/Z y apoya su base en el suelo, aunque el origen del archivo esté desplazado.
+  const bounds=new THREE.Box3().setFromObject(model);
+  const center=bounds.getCenter(new THREE.Vector3());
+  const target=item.position||[0,0,0];
+  model.position.set(target[0]-center.x, target[1]-bounds.min.y, target[2]-center.z);
+  model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
+  scene.add(model);
+  stateLabel.textContent='Ciudad 3D cargada · explora con WASD';
  },undefined,err=>console.warn('No se pudo cargar el modelo:',item.url,err));
 }
 
