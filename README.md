@@ -13,15 +13,18 @@ Abre la página publicada en GitHub Pages. Para desarrollo local, sirve la carpe
 - **Volver al inicio:** restablece la posición y la mirada.
 - **Pantalla completa:** amplía la vista.
 
-## Añadir modelos 3D propios
+## Modelo LowPolyCity
+El juego ya está configurado para cargar `./models/LowPolyCity.glb` delante del punto inicial. Para incluir el archivo del modelo en el repositorio, descomprime el paquete que se preparó y sube `models/LowPolyCity.glb` a la carpeta `models/` de GitHub. El GLB contiene las texturas integradas, por lo que no necesitas los PNG separados del ZIP original.
+
+## Añadir más modelos 3D propios
 1. Exporta el modelo como **GLB** (recomendado) o glTF.
-2. Sube los archivos a la carpeta `models/`. En GLB, las texturas suelen ir dentro del mismo archivo.
-3. En `index.html`, busca `const MODEL_URLS = [];` y agrega una entrada por modelo. Ejemplo:
+2. Sube el archivo a la carpeta `models/`. En GLB, las texturas suelen ir dentro del mismo archivo.
+3. Añade una entrada en el arreglo `MODEL_URLS` de `index.html`. Ejemplo:
 
 ```js
 const MODEL_URLS = [
-  { url: './models/casa.glb', position: [0, 0, -12], scale: 1, rotationY: 0 },
-  { url: './models/arbol-especial.glb', position: [8, 0, -5], scale: 1.5, rotationY: 0.7 }
+  { url: './models/LowPolyCity.glb', position: [0, 0, -8], scale: 1, rotationY: 0 },
+  { url: './models/casa.glb', position: [8, 0, -12], scale: 1, rotationY: 0 }
 ];
 ```
 
