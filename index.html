@@ -1,161 +1,138 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mouse FPV 360°</title>
-  <style>
-    :root { color-scheme: dark; font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #080d13; color: #f4f7fb; }
-    #scene { position: fixed; inset: 0; }
-    canvas { display:block; width:100%; height:100%; cursor: crosshair; }
-    .hud { position:fixed; z-index:2; pointer-events:none; }
-    .top { top:20px; left:20px; right:20px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-    .panel { background:rgba(7,13,21,.72); border:1px solid rgba(255,255,255,.16); border-radius:14px; padding:12px 15px; backdrop-filter:blur(12px); box-shadow:0 10px 35px #0003; }
-    .brand { font-size:12px; text-transform:uppercase; letter-spacing:.18em; color:#79e3d2; font-weight:800; }
-    h1 { margin:5px 0 0; font-size:clamp(18px,2.5vw,27px); letter-spacing:-.04em; }
-    .status { font-size:12px; color:#c4d0dc; margin-top:5px; }
-    .right { text-align:right; font:12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color:#d4e1ec; }
-    .bottom { bottom:20px; left:50%; transform:translateX(-50%); text-align:center; width:min(92vw,620px); }
-    .hint { color:#e2eaf2; font-size:13px; line-height:1.5; }
-    .dot { display:inline-block; width:7px; height:7px; background:#63e6be; border-radius:50%; margin-right:7px; box-shadow:0 0 12px #63e6be; }
-    .crosshair { position:fixed; left:50%; top:50%; width:20px; height:20px; transform:translate(-50%,-50%); z-index:1; pointer-events:none; opacity:.8; }
-    .crosshair:before,.crosshair:after { content:""; position:absolute; background:#fff; box-shadow:0 0 5px #000; }
-    .crosshair:before { width:1px; height:20px; left:9px; top:0; }
-    .crosshair:after { height:1px; width:20px; top:9px; left:0; }
-    .controls { pointer-events:auto; display:flex; justify-content:center; gap:8px; margin-top:10px; flex-wrap:wrap; }
-    button { border:1px solid #ffffff35; background:#101c28dd; color:#f4f7fb; border-radius:999px; padding:9px 13px; cursor:pointer; font-weight:650; }
-    button:hover { background:#213447; }
-    button:focus-visible { outline:2px solid #79e3d2; outline-offset:3px; }
-    #error { display:none; position:fixed; z-index:5; inset:auto 20px 20px 20px; background:#421f25; padding:14px; border-radius:10px; }
-    @media(max-width:600px) { .top {top:10px;left:10px;right:10px}.panel{padding:10px}.right{display:none}.bottom{bottom:10px} }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mouse FPV — Exploración 3D</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101b20;color:#f4f7fb}
+#scene{position:fixed;inset:0}canvas{display:block;width:100%;height:100%;outline:none}
+.hud{position:fixed;z-index:2;pointer-events:none}.top{top:14px;left:14px;right:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.panel{background:rgba(7,13,21,.76);border:1px solid #ffffff26;border-radius:14px;padding:11px 14px;backdrop-filter:blur(10px);box-shadow:0 8px 28px #0003}
+.brand{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:#79e3d2;font-weight:800}h1{margin:4px 0 0;font-size:clamp(18px,2.4vw,25px);letter-spacing:-.04em}.status{font-size:12px;color:#c4d0dc;margin-top:5px}.right{text-align:right;font:12px/1.65 ui-monospace,monospace;color:#d4e1ec;white-space:nowrap}
+.bottom{bottom:14px;left:50%;transform:translateX(-50%);text-align:center;width:min(94vw,680px)}.hint{font-size:12px;line-height:1.5;color:#e2eaf2}.dot{display:inline-block;width:7px;height:7px;background:#63e6be;border-radius:50%;margin-right:7px;box-shadow:0 0 12px #63e6be}
+.crosshair{position:fixed;left:50%;top:50%;width:16px;height:16px;transform:translate(-50%,-50%);z-index:1;pointer-events:none;opacity:.75}.crosshair:before,.crosshair:after{content:"";position:absolute;background:#fff;box-shadow:0 0 5px #000}.crosshair:before{width:1px;height:16px;left:7px}.crosshair:after{height:1px;width:16px;top:7px}
+.controls{pointer-events:auto;display:flex;justify-content:center;gap:7px;margin-top:9px;flex-wrap:wrap}
+button{font:inherit;border:1px solid #ffffff38;background:#101c28ed;color:#f4f7fb;border-radius:12px;padding:10px 13px;cursor:pointer;font-weight:650;touch-action:none;user-select:none;-webkit-user-select:none}
+button:hover,button:focus-visible{background:#213d4a;outline:2px solid #79e3d2;outline-offset:2px}
+.move-pad{position:fixed;z-index:3;left:16px;bottom:18px;display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,48px);gap:5px;pointer-events:auto}
+.move-pad button{padding:0;border-radius:13px;font-size:20px;background:#0a1824d9;border-color:#ffffff42;touch-action:none}
+.move-pad [data-move="forward"]{grid-column:2;grid-row:1}.move-pad [data-move="left"]{grid-column:1;grid-row:2}.move-pad [data-move="back"]{grid-column:2;grid-row:2}.move-pad [data-move="right"]{grid-column:3;grid-row:2}
+#message{position:fixed;z-index:5;left:50%;top:50%;transform:translate(-50%,-50%);max-width:min(90vw,480px);padding:16px;background:#421f25;color:#fff;border-radius:12px;display:none}
+@media(max-width:650px){.top{top:8px;left:8px;right:8px}.panel{padding:9px 10px}.right{display:none}.bottom{bottom:10px;width:calc(100vw - 24px);margin-left:34px}.bottom .panel{padding:9px}.hint{font-size:11px}.controls button{padding:8px 10px;font-size:12px}.move-pad{left:10px;bottom:12px;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(2,42px)}}
+</style>
 </head>
 <body>
-  <div id="scene"></div>
-  <div class="crosshair"></div>
-  <div class="hud top">
-    <div class="panel">
-      <div class="brand">Simulador de mirada · 360°</div>
-      <h1>Mouse FPV</h1>
-      <div class="status"><span class="dot"></span><span id="state">Vista activa · mueve el mouse</span></div>
-    </div>
-    <div class="panel right">
-      <div>YAW <span id="yaw">0.0°</span></div>
-      <div>PITCH <span id="pitch">0.0°</span></div>
-      <div>FOV <span id="fov">75°</span></div>
-    </div>
-  </div>
-  <div class="hud bottom">
-    <div class="panel">
-      <div class="hint">Mueve el mouse para mirar alrededor · arrastra para girar · rueda para acercar/alejar</div>
-      <div class="controls">
-        <button id="reset">Centrar vista</button>
-        <button id="toggle">Activar modo arrastre</button>
-        <button id="fullscreen">Pantalla completa</button>
-      </div>
-    </div>
-  </div>
-  <div id="error"></div>
-  <script type="module">
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+<div id="scene"></div><div class="crosshair"></div>
+<div class="hud top">
+ <div class="panel"><div class="brand">Mouse FPV · mundo 3D</div><h1>Exploración libre</h1><div class="status"><span class="dot"></span><span id="state">Preparando el mundo…</span></div></div>
+ <div class="panel right"><div>POS X <span id="posx">0.0</span></div><div>POS Z <span id="posz">0.0</span></div><div>VELOCIDAD <span id="speed">4.0</span></div></div>
+</div>
+<div class="move-pad" aria-label="Controles de movimiento">
+ <button data-move="forward" aria-label="Avanzar">▲</button><button data-move="left" aria-label="Mover a la izquierda">◀</button><button data-move="back" aria-label="Retroceder">▼</button><button data-move="right" aria-label="Mover a la derecha">▶</button>
+</div>
+<div class="hud bottom"><div class="panel"><div class="hint">Mirada: mueve el puntero facial · Caminar: WASD o flechas · Shift: correr</div><div class="controls"><button id="reset">Volver al inicio</button><button id="speedBtn">Correr: desactivado</button><button id="fullscreen">Pantalla completa</button></div></div></div>
+<div id="message"></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 
-    const mount = document.querySelector('#scene');
-    const stateLabel = document.querySelector('#state');
-    const yawLabel = document.querySelector('#yaw');
-    const pitchLabel = document.querySelector('#pitch');
-    const fovLabel = document.querySelector('#fov');
-    const errorBox = document.querySelector('#error');
+const mount=document.querySelector('#scene'), stateLabel=document.querySelector('#state');
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x9bc8d7); scene.fog=new THREE.Fog(0x9bc8d7,48,155);
+const camera=new THREE.PerspectiveCamera(74,innerWidth/innerHeight,.1,500); camera.position.set(0,1.7,8);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.6)); renderer.setSize(innerWidth,innerHeight); renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; mount.appendChild(renderer.domElement);
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1100);
-    camera.position.set(0, 0, 0.01);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    mount.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xd9efff,0x43543a,2.0));
+const sun=new THREE.DirectionalLight(0xffedcf,2.2); sun.position.set(-24,38,12); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024); sun.shadow.camera.left=-45;sun.shadow.camera.right=45;sun.shadow.camera.top=45;sun.shadow.camera.bottom=-45;scene.add(sun);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshStandardMaterial({color:0x587d4a,roughness:1}));
+ground.rotation.x=-Math.PI/2;ground.position.y=0;ground.receiveShadow=true;scene.add(ground);
 
-    // Panorama equirectangular de demostración. Se puede reemplazar por una imagen 360 propia.
-    const panoramaUrl = 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg';
-    const loader = new THREE.TextureLoader();
-    loader.load(panoramaUrl, (texture) => {
-      texture.colorSpace = THREE.SRGBColorSpace;
-      const sphere = new THREE.Mesh(
-        new THREE.SphereGeometry(500, 80, 60),
-        new THREE.MeshBasicMaterial({ map: texture, side: THREE.BackSide })
-      );
-      scene.add(sphere);
-      stateLabel.textContent = 'Panorama cargado · mueve el mouse';
-    }, undefined, () => {
-      // Fallback procedural: un entorno colorido si el panorama remoto no está disponible.
-      const canvas = document.createElement('canvas');
-      canvas.width = 2048; canvas.height = 1024;
-      const ctx = canvas.getContext('2d');
-      const sky = ctx.createLinearGradient(0,0,0,1024);
-      sky.addColorStop(0,'#173d65'); sky.addColorStop(.53,'#79b7cb'); sky.addColorStop(.54,'#477c67'); sky.addColorStop(1,'#182c28');
-      ctx.fillStyle=sky; ctx.fillRect(0,0,2048,1024);
-      for(let i=0;i<90;i++){
-        const x=Math.random()*2048, y=520+Math.random()*350, r=15+Math.random()*90;
-        ctx.fillStyle=['#1d473d','#315b43','#52784b','#263f38'][i%4];
-        ctx.beginPath(); ctx.ellipse(x,y,r,r*(.5+Math.random()),0,0,Math.PI*2); ctx.fill();
-      }
-      const tex = new THREE.CanvasTexture(canvas); tex.colorSpace=THREE.SRGBColorSpace;
-      scene.add(new THREE.Mesh(new THREE.SphereGeometry(500,80,60),new THREE.MeshBasicMaterial({map:tex,side:THREE.BackSide})));
-      stateLabel.textContent = 'Entorno de respaldo · panorama remoto no disponible';
-    });
+// Suelo con manchas suaves para que el mundo no parezca una superficie vacía.
+for(let i=0;i<190;i++){
+ const r=1.2+Math.random()*4.5;const patch=new THREE.Mesh(new THREE.CircleGeometry(r,9),new THREE.MeshStandardMaterial({color:[0x688d51,0x496d40,0x78905a,0x6c8050][i%4],roughness:1}));
+ patch.rotation.x=-Math.PI/2;patch.position.set((Math.random()-.5)*180,.012+Math.random()*.008,(Math.random()-.5)*180);patch.receiveShadow=true;scene.add(patch);
+}
+const trunkMat=new THREE.MeshStandardMaterial({color:0x65452e,roughness:1});
+const leafMats=[0x315c3e,0x3e7045,0x547c48,0x284e39].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:1}));
+function makeTree(x,z,s=1){
+ const g=new THREE.Group();const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18*s,.28*s,2.3*s,7),trunkMat);trunk.position.y=1.15*s;trunk.castShadow=true;g.add(trunk);
+ for(let j=0;j<3;j++){const crown=new THREE.Mesh(new THREE.ConeGeometry((1.05-j*.16)*s,1.8*s,7),leafMats[(Math.random()*leafMats.length)|0]);crown.position.y=(2.1+j*.72)*s;crown.castShadow=true;g.add(crown)}
+ g.position.set(x,0,z);scene.add(g);
+}
+const rockMats=[0x777d79,0x8c9089,0x666e69].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:1}));
+for(let i=0;i<105;i++){
+ const x=(Math.random()-.5)*150,z=(Math.random()-.5)*150;
+ if(Math.abs(x)<10&&Math.abs(z)<13)continue;
+ if(i<74)makeTree(x,z,.65+Math.random()*1.4);
+ else{const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.35+Math.random()*1.15,0),rockMats[i%rockMats.length]);rock.position.set(x,.35,z);rock.scale.y=.5+Math.random()*.65;rock.rotation.set(Math.random(),Math.random(),Math.random());rock.castShadow=true;rock.receiveShadow=true;scene.add(rock)}
+}
+// Pequeñas colinas alrededor del área inicial.
+for(let i=0;i<18;i++){const hill=new THREE.Mesh(new THREE.SphereGeometry(1,10,7),new THREE.MeshStandardMaterial({color:[0x607d52,0x71865a,0x536f4b][i%3],roughness:1}));const sc=5+Math.random()*10;hill.scale.set(sc*.9,sc*.65,sc*.9);hill.position.set((Math.random()-.5)*190,sc*.22,-45-Math.random()*95);hill.receiveShadow=true;scene.add(hill)}
+// Objetos de referencia visibles cerca del punto de partida.
+const stone=new THREE.Mesh(new THREE.BoxGeometry(2.2,1.5,1.6),new THREE.MeshStandardMaterial({color:0x987b58,roughness:.9}));stone.position.set(4,.75,-5);stone.castShadow=true;stone.receiveShadow=true;scene.add(stone);
+const post=new THREE.Mesh(new THREE.CylinderGeometry(.13,.16,2.2,8),new THREE.MeshStandardMaterial({color:0xb7a27b,roughness:.8}));post.position.set(-4,1.1,-7);post.castShadow=true;scene.add(post);
 
-    let yaw = 0, pitch = 0, targetYaw = 0, targetPitch = 0;
-    let fov = 75, dragging = false, dragMode = false;
-    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-    function setFromPointer(e) {
-      if (dragMode && !dragging) return;
-      const rect = renderer.domElement.getBoundingClientRect();
-      const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      const ny = ((e.clientY - rect.top) / rect.height) * 2 - 1;
-      targetYaw = nx * Math.PI;
-      targetPitch = clamp(-ny * Math.PI * 0.48, -Math.PI * 0.49, Math.PI * 0.49);
-    }
-    renderer.domElement.addEventListener('pointermove', e => { if (!dragMode || dragging) setFromPointer(e); });
-    renderer.domElement.addEventListener('pointerdown', e => {
-      if (dragMode) { dragging = true; renderer.domElement.setPointerCapture(e.pointerId); setFromPointer(e); }
-    });
-    renderer.domElement.addEventListener('pointerup', () => { dragging = false; });
-    renderer.domElement.addEventListener('pointercancel', () => { dragging = false; });
-    renderer.domElement.addEventListener('wheel', e => {
-      e.preventDefault(); fov = clamp(fov + Math.sign(e.deltaY) * 3, 35, 100); camera.fov = fov; camera.updateProjectionMatrix(); fovLabel.textContent = `${fov}°`;
-    }, { passive: false });
+// Añade aquí tus modelos en formato .glb o .gltf. Usa rutas relativas desde index.html.
+// Ejemplo: { url: './models/casa.glb', position: [0,0,-12], scale: 1, rotationY: 0 }
+const MODEL_URLS = [];
+const gltfLoader=new GLTFLoader();
+for(const item of MODEL_URLS){
+ gltfLoader.load(item.url,gltf=>{
+  const model=gltf.scene;model.position.set(...(item.position||[0,0,0]));model.scale.setScalar(item.scale||1);model.rotation.y=item.rotationY||0;
+  model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});scene.add(model);
+ },undefined,err=>console.warn('No se pudo cargar el modelo:',item.url,err));
+}
 
-    document.querySelector('#reset').addEventListener('click', () => { targetYaw = 0; targetPitch = 0; fov = 75; camera.fov=fov; camera.updateProjectionMatrix(); fovLabel.textContent='75°'; });
-    document.querySelector('#toggle').addEventListener('click', e => {
-      dragMode = !dragMode;
-      e.currentTarget.textContent = dragMode ? 'Desactivar modo arrastre' : 'Activar modo arrastre';
-      stateLabel.textContent = dragMode ? 'Modo arrastre · mantén pulsado y mueve' : 'Vista activa · mueve el mouse';
-    });
-    document.querySelector('#fullscreen').addEventListener('click', async () => {
-      try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); } catch {}
-    });
-    addEventListener('resize', () => {
-      camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
-    });
-
-    const direction = new THREE.Vector3();
-    function animate() {
-      requestAnimationFrame(animate);
-      yaw += (targetYaw - yaw) * 0.12;
-      pitch += (targetPitch - pitch) * 0.12;
-      direction.set(
-        Math.sin(yaw) * Math.cos(pitch),
-        Math.sin(pitch),
-        -Math.cos(yaw) * Math.cos(pitch)
-      );
-      camera.lookAt(direction);
-      yawLabel.textContent = `${THREE.MathUtils.radToDeg(yaw).toFixed(1)}°`;
-      pitchLabel.textContent = `${THREE.MathUtils.radToDeg(pitch).toFixed(1)}°`;
-      renderer.render(scene, camera);
-    }
-    animate();
-  </script>
-</body>
-</html>
+let yaw=0,pitch=0,targetYaw=0,targetPitch=0,running=false;
+const keys=new Set(),touchMoves=new Set();let pointerDragging=false;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function setLook(e){
+ const rect=renderer.domElement.getBoundingClientRect();
+ const nx=((e.clientX-rect.left)/rect.width)*2-1,ny=((e.clientY-rect.top)/rect.height)*2-1;
+ targetYaw=nx*Math.PI;targetPitch=clamp(-ny*Math.PI*.46,-1.35,1.35);
+}
+renderer.domElement.addEventListener('pointermove',e=>{if(!pointerDragging)setLook(e)});
+renderer.domElement.addEventListener('pointerdown',e=>{pointerDragging=true;renderer.domElement.setPointerCapture(e.pointerId);setLook(e)});
+renderer.domElement.addEventListener('pointerup',()=>pointerDragging=false);
+renderer.domElement.addEventListener('pointercancel',()=>pointerDragging=false);
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift'].includes(k)){keys.add(k);if(k.startsWith('arrow'))e.preventDefault()}});
+addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+addEventListener('blur',()=>{keys.clear();touchMoves.clear()});
+document.querySelectorAll('[data-move]').forEach(btn=>{
+ const move=btn.dataset.move;
+ const down=e=>{e.preventDefault();touchMoves.add(move);try{btn.setPointerCapture(e.pointerId)}catch{}};
+ const up=e=>{e.preventDefault();touchMoves.delete(move)};
+ btn.addEventListener('pointerdown',down);btn.addEventListener('pointerup',up);btn.addEventListener('pointercancel',up);btn.addEventListener('lostpointercapture',()=>touchMoves.delete(move));
+});
+document.querySelector('#reset').addEventListener('click',()=>{camera.position.set(0,1.7,8);targetYaw=0;targetPitch=0;yaw=0;pitch=0});
+document.querySelector('#speedBtn').addEventListener('click',e=>{running=!running;e.currentTarget.textContent='Correr: '+(running?'activado':'desactivado')});
+document.querySelector('#fullscreen').addEventListener('click',async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen()}catch{}});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+const clock=new THREE.Clock();const forward=new THREE.Vector3(),right=new THREE.Vector3();
+function animate(){
+ requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);
+ yaw+= (targetYaw-yaw)*Math.min(1,dt*9);pitch+=(targetPitch-pitch)*Math.min(1,dt*9);
+ camera.rotation.order='YXZ';camera.rotation.y=-yaw;camera.rotation.x=pitch;
+ let f=0,s=0;
+ if(keys.has('w')||keys.has('arrowup')||touchMoves.has('forward'))f+=1;
+ if(keys.has('s')||keys.has('arrowdown')||touchMoves.has('back'))f-=1;
+ if(keys.has('d')||keys.has('arrowright')||touchMoves.has('right'))s+=1;
+ if(keys.has('a')||keys.has('arrowleft')||touchMoves.has('left'))s-=1;
+ if(f||s){const len=Math.hypot(f,s);f/=len;s/=len;const speed=(running||keys.has('shift'))?9:4.5;
+  forward.set(-Math.sin(yaw),0,-Math.cos(yaw));right.set(Math.cos(yaw),0,-Math.sin(yaw));
+  camera.position.addScaledVector(forward,f*speed*dt);camera.position.addScaledVector(right,s*speed*dt);
+  camera.position.x=clamp(camera.position.x,-220,220);camera.position.z=clamp(camera.position.z,-220,220);
+ }
+ camera.position.y=1.7;
+ document.querySelector('#posx').textContent=camera.position.x.toFixed(1);document.querySelector('#posz').textContent=camera.position.z.toFixed(1);
+ document.querySelector('#speed').textContent=(running||keys.has('shift')?'9.0':'4.5');
+ renderer.render(scene,camera);
+}
+stateLabel.textContent='Mundo listo · mueve el puntero para mirar';
+animate();
+</script>
+</body></html>
